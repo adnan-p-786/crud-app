@@ -24,6 +24,6 @@ const departmentSchema = new Schema({
     }
 )
 
-const User = models.User || mongoose.model("Department", departmentSchema);
+const Department = models.Department || mongoose.model("Department", departmentSchema);
 
-export default User;
+export default Department;

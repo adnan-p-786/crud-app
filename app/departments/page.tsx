@@ -14,7 +14,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 
 import {
   Dialog,
@@ -40,16 +39,40 @@ const Page = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // Form states
+  // =========================
+  // FORM STATES
+  // =========================
+
   const [departmentName, setDepartmentName] = useState("");
   const [code, setCode] = useState("");
   const [description, setDescription] = useState("");
   const [status, setStatus] = useState(false);
 
+  // =========================
+  // DIALOG
+  // =========================
+
   const [open, setOpen] = useState(false);
+
+  // =========================
+  // CREATE / UPDATE STATE
+  // =========================
+
   const [saving, setSaving] = useState(false);
 
-// GET
+  // null = create mode
+  // id   = edit mode
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  // =========================
+  // DELETE STATE
+  // =========================
+
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // =========================
+  // GET DEPARTMENTS
+  // =========================
 
   const fetchDepartments = async () => {
     try {
@@ -69,25 +92,83 @@ const Page = () => {
       setDepartments(data.departments);
     } catch (error) {
       console.error(error);
-      setError("Failed to load departments");
+
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Failed to load departments"
+      );
     } finally {
       setLoading(false);
     }
   };
 
+  // =========================
+  // OPEN CREATE DIALOG
+  // =========================
 
-  // CREATE
+  const handleAddDepartment = () => {
+    setEditingId(null);
 
-  const handleCreateDepartment = async (
+    setDepartmentName("");
+    setCode("");
+    setDescription("");
+    setStatus(false);
+
+    setError("");
+    setOpen(true);
+  };
+
+  // =========================
+  // OPEN EDIT DIALOG
+  // =========================
+
+  const handleEditDepartment = (
+    department: Department
+  ) => {
+    setEditingId(department._id);
+
+    setDepartmentName(
+      department.department_name
+    );
+
+    setCode(department.code);
+
+    setDescription(
+      department.description
+    );
+
+    setStatus(department.status);
+
+    setError("");
+    setOpen(true);
+  };
+
+  // =========================
+  // CREATE / UPDATE
+  // =========================
+
+  const handleSubmit = async (
     e: React.FormEvent<HTMLFormElement>
   ) => {
     e.preventDefault();
 
     try {
       setSaving(true);
+      setError("");
 
-      const response = await fetch("/api/departments", {
-        method: "POST",
+      const isEditing = editingId !== null;
+
+      const url = isEditing
+        ? `/api/departments/${editingId}`
+        : "/api/departments";
+
+      const method = isEditing
+        ? "PUT"
+        : "POST";
+
+      const response = await fetch(url, {
+        method,
         headers: {
           "Content-Type": "application/json",
         },
@@ -102,30 +183,106 @@ const Page = () => {
       const data = await response.json();
 
       if (!response.ok) {
-        alert(data.message || "Failed to create department");
-        return;
+        throw new Error(
+          data.message ||
+            (isEditing
+              ? "Failed to update department"
+              : "Failed to create department")
+        );
       }
 
-      setDepartments((prev) => [
-        data.department,
-        ...prev,
-      ]);
+      if (isEditing) {
+        // Update department in table
+        setDepartments((prev) =>
+          prev.map((department) =>
+            department._id === editingId
+              ? data.department
+              : department
+          )
+        );
+      } else {
+        // Add new department
+        setDepartments((prev) => [
+          data.department,
+          ...prev,
+        ]);
+      }
 
+      // Clear form
       setDepartmentName("");
       setCode("");
       setDescription("");
       setStatus(false);
 
+      setEditingId(null);
+
+      // Close dialog
       setOpen(false);
 
-      alert("Department created successfully");
     } catch (error) {
       console.error(error);
-      alert("Something went wrong");
+
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Something went wrong"
+      );
     } finally {
       setSaving(false);
     }
   };
+
+  // =========================
+  // DELETE DEPARTMENT
+  // =========================
+
+  const deleteDepartment = async (
+    id: string
+  ) => {
+    try {
+      setDeletingId(id);
+      setError("");
+
+      const response = await fetch(
+        `/api/departments/${id}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.message ||
+            "Failed to delete department"
+        );
+      }
+
+      // Remove from table
+      setDepartments((prev) =>
+        prev.filter(
+          (department) =>
+            department._id !== id
+        )
+      );
+
+    } catch (error) {
+      console.error(error);
+
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Failed to delete department"
+      );
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  // =========================
+  // FETCH ON PAGE LOAD
+  // =========================
 
   useEffect(() => {
     fetchDepartments();
@@ -134,7 +291,7 @@ const Page = () => {
   return (
     <div className="w-full p-6">
 
-      {/* HEADER */}
+      {/* ================= HEADER ================= */}
 
       <div className="mb-6 flex items-center justify-between">
 
@@ -142,30 +299,42 @@ const Page = () => {
           DEPARTMENTS
         </h1>
 
-        {/* ADD DEPARTMENT */}
+        {/* ================= ADD / EDIT DIALOG ================= */}
 
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog
+          open={open}
+          onOpenChange={setOpen}
+        >
 
-          <DialogTrigger className='border-2 p-2 rounded-2xl bg-gray-200 hover:cursor-pointer'>
-            Add Department
+          {/* ADD BUTTON */}
+
+          <DialogTrigger >
+            <Button onClick={handleAddDepartment}>
+              Add Department
+            </Button>
           </DialogTrigger>
 
-          <DialogContent>
+          <DialogContent className="max-w-lg">
 
             <DialogHeader>
+
               <DialogTitle>
-                Add Department
+                {editingId
+                  ? "Edit Department"
+                  : "Add Department"}
               </DialogTitle>
+
             </DialogHeader>
 
             <form
-              onSubmit={handleCreateDepartment}
+              onSubmit={handleSubmit}
               className="space-y-4"
             >
 
               {/* Department Name */}
 
               <div className="space-y-2">
+
                 <Label>
                   Department Name
                 </Label>
@@ -174,15 +343,19 @@ const Page = () => {
                   placeholder="Enter department name"
                   value={departmentName}
                   onChange={(e) =>
-                    setDepartmentName(e.target.value)
+                    setDepartmentName(
+                      e.target.value
+                    )
                   }
                   required
                 />
+
               </div>
 
-              {/* Code */}
+              {/* Department Code */}
 
               <div className="space-y-2">
+
                 <Label>
                   Department Code
                 </Label>
@@ -195,23 +368,28 @@ const Page = () => {
                   }
                   required
                 />
+
               </div>
 
               {/* Description */}
 
               <div className="space-y-2">
+
                 <Label>
                   Description
                 </Label>
 
-                <Textarea
+                <Input
                   placeholder="Enter description"
                   value={description}
                   onChange={(e) =>
-                    setDescription(e.target.value)
+                    setDescription(
+                      e.target.value
+                    )
                   }
                   required
                 />
+
               </div>
 
               {/* Status */}
@@ -222,7 +400,9 @@ const Page = () => {
                   type="checkbox"
                   checked={status}
                   onChange={(e) =>
-                    setStatus(e.target.checked)
+                    setStatus(
+                      e.target.checked
+                    )
                   }
                 />
 
@@ -232,16 +412,22 @@ const Page = () => {
 
               </div>
 
-              {/* Submit */}
+              {/* SUBMIT */}
 
               <Button
                 type="submit"
                 className="w-full"
                 disabled={saving}
               >
+
                 {saving
-                  ? "Creating..."
+                  ? editingId
+                    ? "Updating..."
+                    : "Creating..."
+                  : editingId
+                  ? "Update Department"
                   : "Create Department"}
+
               </Button>
 
             </form>
@@ -252,7 +438,7 @@ const Page = () => {
 
       </div>
 
-      {/* ERROR */}
+      {/* ================= ERROR ================= */}
 
       {error && (
         <p className="mb-4 text-red-500">
@@ -260,17 +446,21 @@ const Page = () => {
         </p>
       )}
 
-      {/* LOADING */}
+      {/* ================= LOADING ================= */}
 
       {loading ? (
+
         <p className="text-muted-foreground">
           Loading departments...
         </p>
+
       ) : (
+
+        /* ================= TABLE ================= */
 
         <Table>
 
-          <TableHeader className="text-lg">
+          <TableHeader>
 
             <TableRow>
 
@@ -302,65 +492,92 @@ const Page = () => {
 
             {departments.length > 0 ? (
 
-              departments.map((department) => (
+              departments.map(
+                (department) => (
 
-                <TableRow key={department._id}>
+                  <TableRow
+                    key={department._id}
+                  >
 
-                  <TableCell>
-                    {department.department_name}
-                  </TableCell>
+                    <TableCell>
+                      {department.department_name}
+                    </TableCell>
 
-                  <TableCell>
-                    {department.code}
-                  </TableCell>
+                    <TableCell>
+                      {department.code}
+                    </TableCell>
 
-                  <TableCell>
-                    {department.description}
-                  </TableCell>
+                    <TableCell>
+                      {department.description}
+                    </TableCell>
 
-                  <TableCell>
+                    <TableCell>
 
-                    {department.status ? (
+                      {department.status ? (
 
-                      <span className="font-medium text-green-600">
-                        Active
-                      </span>
+                        <span className="font-medium text-green-600">
+                          Active
+                        </span>
 
-                    ) : (
+                      ) : (
 
-                      <span className="font-medium text-red-600">
-                        Inactive
-                      </span>
+                        <span className="font-medium text-red-600">
+                          Inactive
+                        </span>
 
-                    )}
+                      )}
 
-                  </TableCell>
+                    </TableCell>
 
-                  <TableCell>
+                    <TableCell>
 
-                    <div className="flex gap-2">
+                      <div className="flex gap-2">
 
-                      <Button
-                        variant="outline"
-                        size="sm"
-                      >
-                        Edit
-                      </Button>
+                        {/* EDIT */}
 
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                      >
-                        Delete
-                      </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            handleEditDepartment(
+                              department
+                            )
+                          }
+                        >
+                          Edit
+                        </Button>
 
-                    </div>
+                        {/* DELETE */}
 
-                  </TableCell>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() =>
+                            deleteDepartment(
+                              department._id
+                            )
+                          }
+                          disabled={
+                            deletingId ===
+                            department._id
+                          }
+                        >
 
-                </TableRow>
+                          {deletingId ===
+                          department._id
+                            ? "Deleting..."
+                            : "Delete"}
 
-              ))
+                        </Button>
+
+                      </div>
+
+                    </TableCell>
+
+                  </TableRow>
+
+                )
+              )
 
             ) : (
 

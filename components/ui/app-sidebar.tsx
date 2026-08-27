@@ -36,7 +36,6 @@ export function AppSidebar() {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
-              render={<Link href="/" />}
               size="lg"
               tooltip="management"
             >

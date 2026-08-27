@@ -32,6 +32,6 @@ const employeeSchema = new Schema({
     timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' }
 })
 
-const User = models.User || mongoose.model("Employees", employeeSchema);
+const Employees = models.Employees || mongoose.model("Employees", employeeSchema);
 
-export default User;
+export default Employees;
