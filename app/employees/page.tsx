@@ -40,7 +40,7 @@ interface Employee {
     _id: string;
     name: string;
     email: string;
-    phone_number: string;
+    phone_number: number;
     job_title: string;
 
     departmentId: {
@@ -74,18 +74,22 @@ const Page = () => {
     // EMPLOYEES
     // =========================
 
-    const [employees, setEmployees] = useState<Employee[]>([]);
+    const [employees, setEmployees] =
+        useState<Employee[]>([]);
 
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] =
+        useState(true);
 
-    const [error, setError] = useState("");
+    const [error, setError] =
+        useState("");
 
 
     // =========================
     // DEPARTMENTS
     // =========================
 
-    const [departments, setDepartments] = useState<Department[]>([]);
+    const [departments, setDepartments] =
+        useState<Department[]>([]);
 
     const [departmentLoading, setDepartmentLoading] =
         useState(false);
@@ -95,31 +99,47 @@ const Page = () => {
     // FORM STATES
     // =========================
 
-    const [name, setName] = useState("");
+    const [name, setName] =
+        useState("");
 
-    const [email, setEmail] = useState("");
+    const [email, setEmail] =
+        useState("");
 
-    const [phoneNumber, setPhoneNumber] = useState("");
+    const [phoneNumber, setPhoneNumber] =
+        useState("");
 
-    const [jobTitle, setJobTitle] = useState("");
+    const [jobTitle, setJobTitle] =
+        useState("");
 
-    const [departmentId, setDepartmentId] = useState("");
+    const [departmentId, setDepartmentId] =
+        useState("");
 
-    const [status, setStatus] = useState(false);
+    const [status, setStatus] =
+        useState(false);
+
+
+    // =========================
+    // EDIT STATE
+    // =========================
+
+    const [editingEmployeeId, setEditingEmployeeId] =
+        useState<string | null>(null);
 
 
     // =========================
     // DIALOG
     // =========================
 
-    const [open, setOpen] = useState(false);
+    const [open, setOpen] =
+        useState(false);
 
 
     // =========================
     // SAVING
     // =========================
 
-    const [saving, setSaving] = useState(false);
+    const [saving, setSaving] =
+        useState(false);
 
 
     // =========================
@@ -134,14 +154,11 @@ const Page = () => {
 
             setError("");
 
-
             const response = await fetch(
                 "/api/employees"
             );
 
-
             const data = await response.json();
-
 
             if (!response.ok) {
 
@@ -152,11 +169,9 @@ const Page = () => {
 
             }
 
-
             setEmployees(
                 data.employees || []
             );
-
 
         } catch (error) {
 
@@ -168,7 +183,6 @@ const Page = () => {
             setError(
                 "Failed to load employees"
             );
-
 
         } finally {
 
@@ -189,14 +203,11 @@ const Page = () => {
 
             setDepartmentLoading(true);
 
-
             const response = await fetch(
                 "/api/departments"
             );
 
-
             const data = await response.json();
-
 
             if (!response.ok) {
 
@@ -207,11 +218,9 @@ const Page = () => {
 
             }
 
-
             setDepartments(
                 data.departments || []
             );
-
 
         } catch (error) {
 
@@ -219,7 +228,6 @@ const Page = () => {
                 "Fetch departments error:",
                 error
             );
-
 
         } finally {
 
@@ -231,25 +239,101 @@ const Page = () => {
 
 
     // =========================
-    // CREATE EMPLOYEE
+    // RESET FORM
     // =========================
 
-    const handleCreateEmployee = async (
+    const resetForm = () => {
+
+        setName("");
+
+        setEmail("");
+
+        setPhoneNumber("");
+
+        setJobTitle("");
+
+        setDepartmentId("");
+
+        setStatus(false);
+
+        setEditingEmployeeId(null);
+
+    };
+
+
+    // =========================
+    // EDIT EMPLOYEE
+    // =========================
+
+    const handleEditEmployee = (
+        employee: Employee
+    ) => {
+
+        setEditingEmployeeId(
+            employee._id
+        );
+
+        setName(
+            employee.name
+        );
+
+        setEmail(
+            employee.email
+        );
+
+        setPhoneNumber(
+            String(employee.phone_number)
+        );
+
+        setJobTitle(
+            employee.job_title
+        );
+
+        setDepartmentId(
+            employee.departmentId?._id || ""
+        );
+
+        setStatus(
+            employee.status
+        );
+
+        setOpen(true);
+
+    };
+
+
+    // =========================
+    // CREATE / UPDATE EMPLOYEE
+    // =========================
+
+    const handleSubmitEmployee = async (
         e: React.FormEvent<HTMLFormElement>
     ) => {
 
         e.preventDefault();
 
-
         try {
 
             setSaving(true);
 
+            const isEditing =
+                editingEmployeeId !== null;
+
+
+            const url = isEditing
+                ? `/api/employees/${editingEmployeeId}`
+                : "/api/employees";
+
+
+            const method = isEditing
+                ? "PUT"
+                : "POST";
+
 
             const response = await fetch(
-                "/api/employees",
+                url,
                 {
-                    method: "POST",
+                    method,
 
                     headers: {
                         "Content-Type":
@@ -263,7 +347,7 @@ const Page = () => {
                         email,
 
                         phone_number:
-                            phoneNumber,
+                            Number(phoneNumber),
 
                         job_title:
                             jobTitle,
@@ -277,14 +361,15 @@ const Page = () => {
             );
 
 
-            const data = await response.json();
+            const data =
+                await response.json();
 
 
             if (!response.ok) {
 
                 alert(
                     data.message ||
-                    "Failed to create employee"
+                    "Failed to save employee"
                 );
 
                 return;
@@ -292,41 +377,22 @@ const Page = () => {
             }
 
 
-            // =========================
-            // REFRESH EMPLOYEE LIST
-            // =========================
-
+            // Refresh employee list
             await fetchEmployees();
 
 
-            // =========================
-            // RESET FORM
-            // =========================
-
-            setName("");
-
-            setEmail("");
-
-            setPhoneNumber("");
-
-            setJobTitle("");
-
-            setDepartmentId("");
-
-            setStatus(false);
+            // Reset form
+            resetForm();
 
 
-            // =========================
-            // CLOSE DIALOG
-            // =========================
-
+            // Close dialog
             setOpen(false);
 
 
         } catch (error) {
 
             console.error(
-                "Create employee error:",
+                "Save employee error:",
                 error
             );
 
@@ -334,12 +400,101 @@ const Page = () => {
                 "Something went wrong"
             );
 
-
         } finally {
 
             setSaving(false);
 
         }
+
+    };
+
+
+    // =========================
+    // DELETE EMPLOYEE
+    // =========================
+
+    const handleDeleteEmployee = async (
+        id: string
+    ) => {
+
+        const confirmed =
+            window.confirm(
+                "Are you sure you want to delete this employee?"
+            );
+
+
+        if (!confirmed) {
+            return;
+        }
+
+
+        try {
+
+            const response = await fetch(
+                `/api/employees/${id}`,
+                {
+                    method: "DELETE",
+                }
+            );
+
+
+            const data =
+                await response.json();
+
+
+            if (!response.ok) {
+
+                alert(
+                    data.message ||
+                    "Failed to delete employee"
+                );
+
+                return;
+
+            }
+
+
+            // Remove employee from table
+            setEmployees(
+                (prevEmployees) =>
+                    prevEmployees.filter(
+                        (employee) =>
+                            employee._id !== id
+                    )
+            );
+
+
+            alert(
+                data.message ||
+                "Employee deleted successfully"
+            );
+
+
+        } catch (error) {
+
+            console.error(
+                "Delete employee error:",
+                error
+            );
+
+            alert(
+                "Something went wrong while deleting employee"
+            );
+
+        }
+
+    };
+
+
+    // =========================
+    // ADD EMPLOYEE
+    // =========================
+
+    const handleAddEmployee = () => {
+
+        resetForm();
+
+        setOpen(true);
 
     };
 
@@ -379,7 +534,7 @@ const Page = () => {
 
 
                 {/* =========================
-                    ADD EMPLOYEE
+                    ADD / EDIT DIALOG
                 ========================= */}
 
                 <Dialog
@@ -387,9 +542,13 @@ const Page = () => {
                     onOpenChange={setOpen}
                 >
 
-                    <DialogTrigger>
+                    <DialogTrigger >
 
-                        <Button>
+                        <Button
+                            onClick={
+                                handleAddEmployee
+                            }
+                        >
                             Add Employee
                         </Button>
 
@@ -402,7 +561,11 @@ const Page = () => {
                         <DialogHeader>
 
                             <DialogTitle>
-                                Add Employee
+
+                                {editingEmployeeId
+                                    ? "Edit Employee"
+                                    : "Add Employee"}
+
                             </DialogTitle>
 
                         </DialogHeader>
@@ -410,22 +573,19 @@ const Page = () => {
 
                         <form
                             onSubmit={
-                                handleCreateEmployee
+                                handleSubmitEmployee
                             }
                             className="space-y-4"
                         >
 
 
-                            {/* =========================
-                                NAME
-                            ========================= */}
+                            {/* NAME */}
 
                             <div className="space-y-2">
 
                                 <Label>
                                     Name
                                 </Label>
-
 
                                 <Input
                                     placeholder="Enter employee name"
@@ -441,16 +601,13 @@ const Page = () => {
                             </div>
 
 
-                            {/* =========================
-                                EMAIL
-                            ========================= */}
+                            {/* EMAIL */}
 
                             <div className="space-y-2">
 
                                 <Label>
                                     Email
                                 </Label>
-
 
                                 <Input
                                     type="email"
@@ -467,16 +624,13 @@ const Page = () => {
                             </div>
 
 
-                            {/* =========================
-                                PHONE
-                            ========================= */}
+                            {/* PHONE */}
 
                             <div className="space-y-2">
 
                                 <Label>
                                     Phone Number
                                 </Label>
-
 
                                 <Input
                                     type="tel"
@@ -495,16 +649,13 @@ const Page = () => {
                             </div>
 
 
-                            {/* =========================
-                                JOB TITLE
-                            ========================= */}
+                            {/* JOB TITLE */}
 
                             <div className="space-y-2">
 
                                 <Label>
                                     Job Title
                                 </Label>
-
 
                                 <Input
                                     placeholder="Enter job title"
@@ -520,9 +671,7 @@ const Page = () => {
                             </div>
 
 
-                            {/* =========================
-                                DEPARTMENT
-                            ========================= */}
+                            {/* DEPARTMENT */}
 
                             <div className="space-y-2">
 
@@ -535,11 +684,9 @@ const Page = () => {
                                     value={
                                         departmentId
                                     }
-                                    onValueChange={
-                                        (value) =>
-                                            setDepartmentId(value ?? "")
+                                    onValueChange={(value) =>
+                                        setDepartmentId(value ?? "")
                                     }
-                                    required
                                 >
 
                                     <SelectTrigger className="w-full">
@@ -558,7 +705,7 @@ const Page = () => {
                                     <SelectContent>
 
                                         {departments.length >
-                                            0 ? (
+                                        0 ? (
 
                                             departments.map(
                                                 (
@@ -570,7 +717,7 @@ const Page = () => {
                                                             department._id
                                                         }
                                                         value={
-                                                            department.department_name
+                                                            department._id
                                                         }
                                                     >
 
@@ -601,12 +748,9 @@ const Page = () => {
                             </div>
 
 
-                            {/* =========================
-                                STATUS
-                            ========================= */}
+                            {/* STATUS */}
 
                             <div className="flex items-center gap-2">
-
 
                                 <input
                                     type="checkbox"
@@ -619,18 +763,14 @@ const Page = () => {
                                     className="h-4 w-4"
                                 />
 
-
                                 <Label>
                                     Active
                                 </Label>
 
-
                             </div>
 
 
-                            {/* =========================
-                                SUBMIT
-                            ========================= */}
+                            {/* SUBMIT */}
 
                             <Button
                                 type="submit"
@@ -642,8 +782,14 @@ const Page = () => {
                             >
 
                                 {saving
-                                    ? "Creating..."
-                                    : "Create Employee"}
+
+                                    ? editingEmployeeId
+                                        ? "Updating..."
+                                        : "Creating..."
+
+                                    : editingEmployeeId
+                                        ? "Update Employee"
+                                        : "Create Employee"}
 
                             </Button>
 
@@ -685,9 +831,7 @@ const Page = () => {
                 <Table>
 
 
-                    {/* =========================
-                        TABLE HEADER
-                    ========================= */}
+                    {/* TABLE HEADER */}
 
                     <TableHeader>
 
@@ -726,9 +870,7 @@ const Page = () => {
                     </TableHeader>
 
 
-                    {/* =========================
-                        TABLE BODY
-                    ========================= */}
+                    {/* TABLE BODY */}
 
                     <TableBody>
 
@@ -823,17 +965,31 @@ const Page = () => {
                                             <div className="flex gap-2">
 
 
+                                                {/* EDIT */}
+
                                                 <Button
                                                     variant="outline"
                                                     size="sm"
+                                                    onClick={() =>
+                                                        handleEditEmployee(
+                                                            employee
+                                                        )
+                                                    }
                                                 >
                                                     Edit
                                                 </Button>
 
 
+                                                {/* DELETE */}
+
                                                 <Button
                                                     variant="destructive"
                                                     size="sm"
+                                                    onClick={() =>
+                                                        handleDeleteEmployee(
+                                                            employee._id
+                                                        )
+                                                    }
                                                 >
                                                     Delete
                                                 </Button>
